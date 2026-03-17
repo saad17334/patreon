@@ -4,12 +4,13 @@ import FacebookProvider from "next-auth/providers/facebook"
 import GoogleProvider from "next-auth/providers/google"
 import GithubProvider from "next-auth/providers/github"
 
-// Logging to help debug in Vercel logs
-console.log("🔐 NextAuth API loaded with env vars:", {
-  NEXTAUTH_URL: process.env.NEXTAUTH_URL,
-  NEXTAUTH_SECRET: !!process.env.NEXTAUTH_SECRET,
-  GITHUB_ID: !!process.env.GITHUB_ID,
-  GITHUB_SECRET: !!process.env.GITHUB_SECRET,
+// 🔍 Better logging (VERY IMPORTANT)
+console.log("🔐 NextAuth ENV CHECK:", {
+  NEXTAUTH_URL: process.env.NEXTAUTH_URL || "❌ NOT FOUND",
+  NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ? "✅ FOUND" : "❌ NOT FOUND",
+  GITHUB_ID: process.env.GITHUB_ID ? "✅ FOUND" : "❌ NOT FOUND",
+  GITHUB_SECRET: process.env.GITHUB_SECRET ? "✅ FOUND" : "❌ NOT FOUND",
+  NODE_ENV: process.env.NODE_ENV,
 })
 
 const handler = NextAuth({
@@ -32,12 +33,17 @@ const handler = NextAuth({
     }),
   ],
 
-  // Secret used for session encryption — _must_ be set in Vercel env vars
+  // 🔴 Force explicit secret check
   secret: process.env.NEXTAUTH_SECRET,
 
-  // Optional: Add debug so logs show more info on failure
-  debug: process.env.NODE_ENV === "production",
+  debug: true, // enable full logs
+
+  // Optional: add error handler for more visibility
+  events: {
+    error(message) {
+      console.error("❌ NextAuth ERROR:", message)
+    },
+  },
 })
 
-// Export as GET and POST for App Router handler
 export { handler as GET, handler as POST }
