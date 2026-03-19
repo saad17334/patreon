@@ -3,15 +3,24 @@ import AppleProvider from "next-auth/providers/apple"
 import FacebookProvider from "next-auth/providers/facebook"
 import GoogleProvider from "next-auth/providers/google"
 import GithubProvider from "next-auth/providers/github"
+import mongoose from "mongoose"
+import User from "@/models/User"
+import Payment from "@/models/Payment"
 
-// 🔍 Better logging (VERY IMPORTANT)
-console.log("🔐 NextAuth ENV CHECK:", {
-  NEXTAUTH_URL: process.env.NEXTAUTH_URL || "❌ NOT FOUND",
-  NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ? "✅ FOUND" : "❌ NOT FOUND",
-  GITHUB_ID: process.env.GITHUB_ID ? "✅ FOUND" : "❌ NOT FOUND",
-  GITHUB_SECRET: process.env.GITHUB_SECRET ? "✅ FOUND" : "❌ NOT FOUND",
-  NODE_ENV: process.env.NODE_ENV,
-})
+// MongoDB connection helper
+let cached = global.mongoose;
+if (!cached) cached = global.mongoose = { conn: null, promise: null };
+
+const connectDB = async () => {
+    if (cached.conn) return cached.conn;
+
+    if (!cached.promise) {
+        cached.promise = mongoose.connect(process.env.MONGODB_URI);
+    }
+
+    cached.conn = await cached.promise;
+    return cached.conn;
+};
 
 const handler = NextAuth({
   providers: [
@@ -32,18 +41,37 @@ const handler = NextAuth({
       clientSecret: process.env.GITHUB_SECRET,
     }),
   ],
+  callbacks: {
+    async signIn({ user, account, profile }) {
+      if (account.provider === "github") {
+        await connectDB();
 
-  // 🔴 Force explicit secret check
-  secret: process.env.NEXTAUTH_SECRET,
+        let email = user?.email;
+        if (!email) {
+          email = profile?.emails?.[0]?.value || `${profile.id}@github.com`;
+        }
 
-  debug: true, // enable full logs
+        let Username = null;
+        if (user?.email) {
+          Username = user.email.split("@")[0];
+        } else if (profile?.login) {
+          Username = profile.login;
+        } else if (profile?.Username) {
+          Username = profile.Username;
+        } else {
+          Username = `user_${Date.now()}`;
+        }
 
-  // Optional: add error handler for more visibility
-  events: {
-    error(message) {
-      console.error("❌ NextAuth ERROR:", message)
-    },
-  },
+        let currentUser = await User.findOne({ email });
+        if (!currentUser) {
+          currentUser = await User.create({ email, Username });
+        }
+
+        user.name = currentUser.Username;
+      }
+      return true;
+    }
+  }
 })
 
 export { handler as GET, handler as POST }
