@@ -66,14 +66,14 @@ const Payment = ({ username }) => {
 
             <div className='relative w-full'>
                 <img
-                    src={currentUser.coverPic}
+                    src={currentUser.coverPic || "/cover.jpg"} 
                     className="w-full h-40 sm:h-56 md:h-72 object-cover"
                     alt="Cover"
                 />
 
                 <div className="absolute left-1/2 -translate-x-1/2 translate-y-1/2 bottom-0">
                     <img
-                        src={currentUser.profilePic}
+                        src={currentUser.profilePic || "/man.jpg"} 
                         className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white object-cover"
                         alt="Profile"
                     />
